@@ -236,6 +236,7 @@ local function fire()
 	-- Recul + dispersion
 	local yaw = (math.random() - 0.5) * 2 * cfg.RecoilHorizontal
 	CameraController.addRecoil(cfg.RecoilVertical, yaw)
+	CameraController.addShake(0.25 + cfg.RecoilVertical * 0.15)
 	spreadCurrent = math.min(spreadCurrent + cfg.SpreadPerShot, cfg.SpreadMax)
 
 	-- Armes Semi : verrouille jusqu'au relâchement
@@ -313,6 +314,38 @@ function WeaponController.equip(slot: string)
 	end)
 end
 
+-- ⚠️ TEMPORAIRE (debug) : permet d'essayer toutes les armes avant l'éditeur de
+-- loadout (Phase 2). Touche B = arme primaire suivante, V = secondaire suivante.
+local function cycleWeapon(slot: string)
+	-- Liste triée des armes de ce slot
+	local ids = {}
+	for id, weapon in WeaponConfig.Weapons do
+		if weapon.Slot == slot then
+			table.insert(ids, id)
+		end
+	end
+	table.sort(ids)
+	if #ids == 0 then
+		return
+	end
+	-- Trouve l'arme actuelle et prend la suivante
+	local currentId = loadout[slot]
+	local index = 0
+	for i, id in ipairs(ids) do
+		if id == currentId then
+			index = i
+			break
+		end
+	end
+	local nextId = ids[(index % #ids) + 1]
+
+	loadout[slot] = nextId
+	local cfg = WeaponConfig.get(nextId)
+	clientAmmo[nextId] = { mag = cfg.MagSize, reserve = cfg.ReserveAmmo }
+	current = nil
+	WeaponController.equip(slot)
+end
+
 -- ───────────────────────────── Boucle ─────────────────────────────
 
 local function update(dt: number)
@@ -354,6 +387,10 @@ local function bindInput()
 			WeaponController.equip("Primary")
 		elseif input.KeyCode == Enum.KeyCode.Two then
 			WeaponController.equip("Secondary")
+		elseif input.KeyCode == Enum.KeyCode.B then
+			cycleWeapon("Primary") -- ⚠️ debug : arme primaire suivante
+		elseif input.KeyCode == Enum.KeyCode.V then
+			cycleWeapon("Secondary") -- ⚠️ debug : arme secondaire suivante
 		end
 	end)
 

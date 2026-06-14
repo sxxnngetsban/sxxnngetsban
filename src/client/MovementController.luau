@@ -5,7 +5,6 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-
 local MovementController = {}
 
 local player = Players.LocalPlayer
@@ -51,22 +50,48 @@ local function startSlide()
 	sliding = true
 	lastSlide = now
 
-	-- Élan vers l'avant
+	-- Direction de l'élan (à plat)
 	local dir = hrp.CFrame.LookVector
-	local flat = Vector3.new(dir.X, 0, dir.Z).Unit
-	hrp.AssemblyLinearVelocity = flat * SLIDE_SPEED + Vector3.new(0, hrp.AssemblyLinearVelocity.Y, 0)
-
-	-- Caméra qui s'abaisse (effet de glissade)
-	hum.CameraOffset = Vector3.new(0, -1.3, 0)
-	hum.WalkSpeed = 6 -- on garde l'élan, on bride le contrôle pendant la glissade
-
-	task.delay(SLIDE_DURATION, function()
+	local flat = Vector3.new(dir.X, 0, dir.Z)
+	if flat.Magnitude < 0.05 then
 		sliding = false
-		local h = select(1, getCharacter())
-		if h then
-			h.CameraOffset = Vector3.new(0, 0, 0)
-			h.WalkSpeed = sprinting and SPRINT_SPEED or WALK_SPEED
+		return
+	end
+	flat = flat.Unit
+
+	-- Contrainte de vitesse qui POUSSE le joueur vers l'avant (vrai slide)
+	local att = Instance.new("Attachment")
+	att.Parent = hrp
+	local lv = Instance.new("LinearVelocity")
+	lv.Attachment0 = att
+	lv.RelativeTo = Enum.ActuatorRelativeTo.World
+	lv.MaxForce = 1e6
+	lv.VectorVelocity = flat * SLIDE_SPEED
+	lv.Parent = hrp
+
+	-- Caméra abaissée + on bride le contrôle pour garder l'élan
+	hum.CameraOffset = Vector3.new(0, -1.3, 0)
+	hum.WalkSpeed = 4
+
+	-- L'élan décroît pendant la durée du slide
+	local startT = os.clock()
+	local conn
+	conn = RunService.Heartbeat:Connect(function()
+		local h, root = getCharacter()
+		local alpha = math.clamp((os.clock() - startT) / SLIDE_DURATION, 0, 1)
+		if not h or not root or alpha >= 1 then
+			conn:Disconnect()
+			if lv then lv:Destroy() end
+			if att then att:Destroy() end
+			sliding = false
+			if h then
+				h.CameraOffset = Vector3.new(0, 0, 0)
+				h.WalkSpeed = sprinting and SPRINT_SPEED or WALK_SPEED
+			end
+			return
 		end
+		local speed = SLIDE_SPEED * (1 - alpha)
+		lv.VectorVelocity = Vector3.new(flat.X * speed, root.AssemblyLinearVelocity.Y, flat.Z * speed)
 	end)
 end
 

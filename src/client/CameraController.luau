@@ -20,6 +20,8 @@ local currentFov = 70
 local targetFov = 70
 local fovSpeed = 12
 
+local shakeMagnitude = 0 -- intensité du screenshake (décroît)
+
 local function onRender(dt: number)
 	camera = Workspace.CurrentCamera
 
@@ -28,8 +30,18 @@ local function onRender(dt: number)
 	recoilSpring:setTarget(recoilTarget)
 	local r = recoilSpring:update(dt)
 
-	-- Applique la rotation de recul par-dessus la caméra
-	camera.CFrame = camera.CFrame * CFrame.Angles(math.rad(r.X), math.rad(r.Y), 0)
+	-- Screenshake : petite secousse aléatoire qui décroît
+	local shakeX, shakeY, shakeZ = 0, 0, 0
+	if shakeMagnitude > 0.001 then
+		shakeX = (math.random() - 0.5) * shakeMagnitude
+		shakeY = (math.random() - 0.5) * shakeMagnitude
+		shakeZ = (math.random() - 0.5) * shakeMagnitude * 0.5
+		shakeMagnitude = shakeMagnitude * math.clamp(1 - 14 * dt, 0, 1)
+	end
+
+	-- Applique le recul + le screenshake par-dessus la caméra
+	camera.CFrame = camera.CFrame
+		* CFrame.Angles(math.rad(r.X + shakeX), math.rad(r.Y + shakeY), math.rad(shakeZ))
 
 	-- Champ de vision (lissé)
 	currentFov = currentFov + (targetFov - currentFov) * math.clamp(fovSpeed * dt, 0, 1)
@@ -39,6 +51,11 @@ end
 -- Ajoute un coup de recul (degrés)
 function CameraController.addRecoil(pitch: number, yaw: number)
 	recoilTarget = recoilTarget + Vector3.new(pitch, yaw, 0)
+end
+
+-- Ajoute une secousse de caméra (screenshake), en degrés d'amplitude
+function CameraController.addShake(amount: number)
+	shakeMagnitude = math.min(shakeMagnitude + amount, 3)
 end
 
 function CameraController.setRecoilRecovery(value: number)

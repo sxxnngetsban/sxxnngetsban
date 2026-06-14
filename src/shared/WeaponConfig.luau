@@ -22,6 +22,11 @@ WeaponConfig.DefaultLoadout = {
 	Secondary = "G18",
 }
 
+-- ⚠️ SON PAR DÉFAUT (toutes les armes sans FireSoundId propre l'utilisent).
+-- Colle ici l'ID d'un son de tir gratuit pris dans la Boîte à outils de Studio.
+-- Exemple de format : "rbxassetid://1234567890"
+WeaponConfig.DefaultFireSoundId = ""
+
 -- Catégories (pour l'UI / le filtrage)
 WeaponConfig.Categories = { "AR", "SMG", "Sniper", "Shotgun", "LMG", "Pistol" }
 

@@ -296,9 +296,13 @@ function WeaponController.equip(slot: string)
 	current = { id = id, cfg = cfg }
 	spreadCurrent = 0
 
-	-- Associe le son de tir de l'arme
+	-- Associe le son de tir de l'arme (ou le son par défaut si l'arme n'en a pas)
 	if fireSound then
-		fireSound.SoundId = cfg.FireSoundId or ""
+		local soundId = cfg.FireSoundId
+		if not soundId or soundId == "" then
+			soundId = WeaponConfig.DefaultFireSoundId or ""
+		end
+		fireSound.SoundId = soundId
 	end
 
 	CameraController.setRecoilRecovery(cfg.RecoilRecovery)

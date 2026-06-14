@@ -14,6 +14,7 @@ local CameraController = require(script.CameraController)
 local Hud = require(script.Hud)
 local WeaponController = require(script.WeaponController)
 local MovementController = require(script.MovementController)
+local ViewModelController = require(script.ViewModelController)
 
 local player = Players.LocalPlayer
 
@@ -22,6 +23,7 @@ player.CameraMode = Enum.CameraMode.LockFirstPerson
 
 -- Démarrage des contrôleurs
 CameraController.start()
+ViewModelController.start()
 Hud.start()
 WeaponController.start()
 MovementController.start()

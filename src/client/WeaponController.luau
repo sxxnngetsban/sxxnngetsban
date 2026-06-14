@@ -18,6 +18,7 @@ local Net = require(Shared.Net)
 
 local CameraController = require(script.Parent.CameraController)
 local Hud = require(script.Parent.Hud)
+local ViewModelController = require(script.Parent.ViewModelController)
 
 local WeaponController = {}
 
@@ -237,6 +238,7 @@ local function fire()
 	local yaw = (math.random() - 0.5) * 2 * cfg.RecoilHorizontal
 	CameraController.addRecoil(cfg.RecoilVertical, yaw)
 	CameraController.addShake(0.25 + cfg.RecoilVertical * 0.15)
+	ViewModelController.kick()
 	spreadCurrent = math.min(spreadCurrent + cfg.SpreadPerShot, cfg.SpreadMax)
 
 	-- Armes Semi : verrouille jusqu'au relâchement
@@ -305,6 +307,7 @@ function WeaponController.equip(slot: string)
 		fireSound.SoundId = soundId
 	end
 
+	ViewModelController.equip(cfg)
 	CameraController.setRecoilRecovery(cfg.RecoilRecovery)
 	CameraController.setFov(cfg.HipFov, cfg.AdsSpeed)
 	Hud.setWeaponName(cfg.DisplayName)
@@ -370,6 +373,7 @@ local function update(dt: number)
 	-- FOV selon visée
 	local targetFov = ads and cfg.AdsFov or cfg.HipFov
 	CameraController.setFov(targetFov, cfg.AdsSpeed)
+	ViewModelController.setAds(ads)
 	Hud.setCrosshairVisible(not ads or cfg.AdsFov > 40)
 end
 

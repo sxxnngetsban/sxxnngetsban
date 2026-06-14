@@ -1,0 +1,7 @@
+# Rokit — gestionnaire d'outils (https://github.com/rojo-rbx/rokit)
+# Installe Rokit puis lance `rokit install` à la racine du projet pour
+# récupérer Rojo automatiquement.
+
+[tools]
+rojo = "rojo-rbx/rojo@7.4.4"
+stylua = "JohnnyMorganz/StyLua@0.20.0"

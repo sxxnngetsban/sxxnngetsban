@@ -1,0 +1,19 @@
+# Roblox / Rojo
+*.rbxl
+*.rbxlx
+*.rbxl.lock
+*.rbxlx.lock
+*.rbxm
+*.rbxmx
+
+# Outils
+/.rokit
+/bin
+
+# Éditeurs
+.vscode/
+.idea/
+.DS_Store
+
+# Sourcemap généré
+sourcemap.json

@@ -96,20 +96,13 @@ local function broadcastScores()
 	Net.get("ScoreUpdate"):FireAllClients(payload)
 end
 
-local function setupLeaderstats(player: Player)
-	local stats = Instance.new("Folder")
-	stats.Name = "leaderstats"
-	local kills = Instance.new("IntValue")
-	kills.Name = "Kills"
-	kills.Parent = stats
-	local deaths = Instance.new("IntValue")
-	deaths.Name = "Deaths"
-	deaths.Parent = stats
-	stats.Parent = player
-end
-
 -- Appelé par CombatService lors d'une élimination
 function GameModeService.registerKill(killer: Player?, victim: Player, weaponId: string, headshot: boolean)
+	-- Progression persistante (XP, monnaie, stats) si le service est présent
+	if services and services.Progression then
+		services.Progression.onKill(killer, victim, headshot)
+	end
+
 	-- Stats victime
 	local vStats = victim:FindFirstChild("leaderstats")
 	if vStats and vStats:FindFirstChild("Deaths") then
@@ -165,6 +158,26 @@ end
 
 function GameModeService.endRound(winner: string)
 	roundActive = false
+
+	-- Récompenses de fin de manche (XP / monnaie)
+	if services and services.Progression then
+		local winners = {}
+		if GameConfig.Mode == "TDM" then
+			for _, t in ipairs(teamObjects) do
+				if t.Name == winner then
+					winners = t:GetPlayers()
+				end
+			end
+		else
+			for _, pl in ipairs(Players:GetPlayers()) do
+				if pl.Name == winner then
+					table.insert(winners, pl)
+				end
+			end
+		end
+		services.Progression.onRoundEnd(winners)
+	end
+
 	Net.get("ScoreUpdate"):FireAllClients({
 		mode = GameConfig.Mode,
 		roundActive = false,
@@ -206,7 +219,6 @@ function GameModeService.init(svc)
 	roundEndTime = os.clock() + GameConfig.RoundTime
 
 	Players.PlayerAdded:Connect(function(player)
-		setupLeaderstats(player)
 		GameModeService.assignTeam(player)
 		task.wait(0.5)
 		broadcastScores()

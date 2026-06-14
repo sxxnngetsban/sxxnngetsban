@@ -13,6 +13,7 @@ local Net = require(Shared.Net)
 local CameraController = require(script.CameraController)
 local Hud = require(script.Hud)
 local WeaponController = require(script.WeaponController)
+local MovementController = require(script.MovementController)
 
 local player = Players.LocalPlayer
 
@@ -23,6 +24,7 @@ player.CameraMode = Enum.CameraMode.LockFirstPerson
 CameraController.start()
 Hud.start()
 WeaponController.start()
+MovementController.start()
 
 -- Suivi de la vie du joueur -> HUD
 local function bindHealth(character)

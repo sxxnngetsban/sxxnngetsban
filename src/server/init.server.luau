@@ -11,17 +11,23 @@ local Net = require(Shared.Net)
 Net.setup()
 
 -- 2) Charge les services
+local DataService = require(script.DataService)
+local ProgressionService = require(script.ProgressionService)
 local GameModeService = require(script.GameModeService)
 local SpawnService = require(script.SpawnService)
 local CombatService = require(script.CombatService)
 
 -- 3) Conteneur de services partagé entre eux
 local services = {}
+services.Data = DataService
+services.Progression = ProgressionService
 services.GameMode = GameModeService
 services.Spawn = SpawnService
 services.Combat = CombatService
 
--- 4) Initialisation (ordre : modes -> spawn -> combat)
+-- 4) Initialisation (données -> progression -> modes -> spawn -> combat)
+DataService.init(services)
+ProgressionService.init(services)
 GameModeService.init(services)
 SpawnService.init(services)
 CombatService.init(services)

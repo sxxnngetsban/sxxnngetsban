@@ -1,0 +1,6 @@
+# Aftman — gestionnaire d'outils (utilisé par l'extension Rojo de VS Code)
+# Version de Rojo épinglée pour correspondre au plugin Studio (7.6.1).
+# Si tu changes ça, change aussi la version du plugin dans Studio.
+
+[tools]
+rojo = "rojo-rbx/rojo@7.6.1"

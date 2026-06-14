@@ -19,6 +19,7 @@ local DEFINITIONS = {
 	Killfeed = "RemoteEvent", -- serveur -> tous : journal des éliminations
 	ScoreUpdate = "RemoteEvent", -- serveur -> tous : scores / état de manche
 	PlayerLoadout = "RemoteEvent", -- serveur -> client : loadout au spawn
+	ProgressionUpdate = "RemoteEvent", -- serveur -> client : XP / niveau / monnaie gagnés
 }
 
 -- Serveur uniquement : crée le dossier et tous les remotes

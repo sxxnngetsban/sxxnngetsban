@@ -38,6 +38,7 @@ local switching = false
 local lastShot = 0
 local spreadCurrent = 0
 local semiLatch = false -- empêche l'auto-fire des armes Semi
+local fireSound = nil -- Sound réutilisable pour le tir
 
 -- ───────────────────────────── Munitions ─────────────────────────────
 
@@ -76,6 +77,36 @@ local function spawnTracer(origin: Vector3, hitPos: Vector3)
 	part.CFrame = CFrame.lookAt(origin, hitPos) * CFrame.new(0, 0, -distance / 2)
 	part.Parent = Workspace
 	Debris:AddItem(part, 0.06)
+end
+
+-- Flash lumineux au canon (procédural, sans asset) pour donner de la « pêche »
+local function spawnMuzzleFlash(position: Vector3)
+	local flash = Instance.new("Part")
+	flash.Anchored = true
+	flash.CanCollide = false
+	flash.CanQuery = false
+	flash.CastShadow = false
+	flash.Shape = Enum.PartType.Ball
+	flash.Material = Enum.Material.Neon
+	flash.Color = Color3.fromRGB(255, 220, 130)
+	flash.Size = Vector3.new(0.7, 0.7, 0.7)
+	flash.CFrame = CFrame.new(position)
+
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 210, 120)
+	light.Brightness = 6
+	light.Range = 12
+	light.Parent = flash
+
+	flash.Parent = Workspace
+	Debris:AddItem(flash, 0.05)
+end
+
+local function playFireSound()
+	if fireSound and fireSound.SoundId ~= "" then
+		fireSound.TimePosition = 0
+		fireSound:Play()
+	end
 end
 
 local function spawnImpact(hitPos: Vector3, normal: Vector3, onCharacter: boolean)
@@ -159,6 +190,11 @@ local function fire()
 	local spread = computeSpread(cfg)
 	local ignore = getIgnoreList()
 	local params = RaycastUtil.makeParams(ignore)
+
+	-- Effets « pêche » : flash au canon + son
+	local muzzlePos = origin + camera.CFrame.LookVector * 2 + camera.CFrame.RightVector * 0.6 + Vector3.new(0, -0.5, 0)
+	spawnMuzzleFlash(muzzlePos)
+	playFireSound()
 
 	local serverShots = {}
 	local hitCharacter, headHint = false, false
@@ -259,6 +295,11 @@ function WeaponController.equip(slot: string)
 	current = { id = id, cfg = cfg }
 	spreadCurrent = 0
 
+	-- Associe le son de tir de l'arme
+	if fireSound then
+		fireSound.SoundId = cfg.FireSoundId or ""
+	end
+
 	CameraController.setRecoilRecovery(cfg.RecoilRecovery)
 	CameraController.setFov(cfg.HipFov, cfg.AdsSpeed)
 	Hud.setWeaponName(cfg.DisplayName)
@@ -357,6 +398,13 @@ local function onCharacterAdded()
 end
 
 function WeaponController.start()
+	-- Son de tir réutilisable (parenté à la caméra = son 2D pour le tireur)
+	fireSound = Instance.new("Sound")
+	fireSound.Name = "FireSound"
+	fireSound.Volume = 0.5
+	fireSound.RollOffMaxDistance = 120
+	fireSound.Parent = camera
+
 	resetAmmo()
 	bindInput()
 

@@ -414,6 +414,18 @@ end
 
 -- ───────────────────────────── Réseau / spawn ─────────────────────────────
 
+-- API publique pour les contrôles mobiles
+function WeaponController.setFiring(value: boolean)
+	firing = value
+	if value then
+		semiLatch = false
+	end
+end
+
+function WeaponController.setAiming(value: boolean)
+	ads = value
+end
+
 local function onLoadout(newLoadout)
 	if typeof(newLoadout) == "table" then
 		loadout = newLoadout
@@ -448,6 +460,10 @@ function WeaponController.start()
 	fireSound.Name = "FireSound"
 	fireSound.Volume = 0.5
 	fireSound.RollOffMaxDistance = 120
+	local masterGroup = game:GetService("SoundService"):FindFirstChild("Master")
+	if masterGroup then
+		fireSound.SoundGroup = masterGroup
+	end
 	fireSound.Parent = camera
 
 	resetAmmo()

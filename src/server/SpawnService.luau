@@ -50,11 +50,17 @@ local function choosePosition(): CFrame
 end
 
 local function applyLoadout(player: Player)
-	-- Loadout par défaut ; tu peux le personnaliser par joueur ici plus tard
-	Net.get("PlayerLoadout"):FireClient(player, {
-		Primary = WeaponConfig.DefaultLoadout.Primary,
-		Secondary = WeaponConfig.DefaultLoadout.Secondary,
-	})
+	-- Utilise le loadout sauvegardé du joueur (ou défaut)
+	local loadout
+	if services and services.Loadout then
+		loadout = services.Loadout.getLoadout(player)
+	else
+		loadout = {
+			Primary = WeaponConfig.DefaultLoadout.Primary,
+			Secondary = WeaponConfig.DefaultLoadout.Secondary,
+		}
+	end
+	Net.get("PlayerLoadout"):FireClient(player, loadout)
 end
 
 local function onCharacterAdded(player: Player, character: Model)

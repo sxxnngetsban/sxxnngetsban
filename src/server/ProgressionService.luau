@@ -105,6 +105,11 @@ function ProgressionService.award(player: Player, xp: number, coins: number)
 	if not data then
 		return
 	end
+	-- Multiplicateur d'XP (gamepasses VIP/DoubleXP, boosts)
+	if services.Monetization then
+		xp = math.floor(xp * services.Monetization.getXpMultiplier(player))
+	end
+
 	local oldLevel = ProgressionConfig.levelFromTotalXp(data.xp)
 	data.xp += xp
 	data.coins += coins
@@ -117,7 +122,12 @@ function ProgressionService.award(player: Player, xp: number, coins: number)
 
 	syncValues(player)
 
-	-- Notifie le client (pour l'UI / le « juice » — pas encore écouté côté client)
+	-- Rafraîchit le profil complet côté client (menus : coins, niveau…)
+	if services.Loadout then
+		services.Loadout.sync(player)
+	end
+
+	-- Notifie le client (pour l'UI / le « juice »)
 	Net.get("ProgressionUpdate"):FireClient(player, {
 		xp = data.xp,
 		coins = data.coins,

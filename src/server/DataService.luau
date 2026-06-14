@@ -75,7 +75,16 @@ end
 
 -- Charge (ou crée) les données d'un joueur. Renvoie la table de données.
 function DataService.load(player: Player)
-	local saved = loadAsync(keyFor(player))
+	local saved
+	if RunService:IsStudio() then
+		-- En Studio : une seule tentative (pas de 30s d'attente si l'API est désactivée)
+		local ok, res = pcall(function()
+			return store:GetAsync(keyFor(player))
+		end)
+		saved = ok and res or nil
+	else
+		saved = loadAsync(keyFor(player))
+	end
 	local data = saved or defaultData()
 	-- Fusion défensive : ajoute les champs manquants si la structure a évolué
 	local defaults = defaultData()

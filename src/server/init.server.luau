@@ -12,7 +12,9 @@ Net.setup()
 
 -- 2) Charge les services
 local DataService = require(script.DataService)
+local MonetizationService = require(script.MonetizationService)
 local ProgressionService = require(script.ProgressionService)
+local LoadoutService = require(script.LoadoutService)
 local GameModeService = require(script.GameModeService)
 local SpawnService = require(script.SpawnService)
 local CombatService = require(script.CombatService)
@@ -20,14 +22,18 @@ local CombatService = require(script.CombatService)
 -- 3) Conteneur de services partagé entre eux
 local services = {}
 services.Data = DataService
+services.Monetization = MonetizationService
 services.Progression = ProgressionService
+services.Loadout = LoadoutService
 services.GameMode = GameModeService
 services.Spawn = SpawnService
 services.Combat = CombatService
 
--- 4) Initialisation (données -> progression -> modes -> spawn -> combat)
+-- 4) Initialisation (données -> monétisation -> progression -> loadout -> modes -> spawn -> combat)
 DataService.init(services)
+MonetizationService.init(services)
 ProgressionService.init(services)
+LoadoutService.init(services)
 GameModeService.init(services)
 SpawnService.init(services)
 CombatService.init(services)

@@ -21,6 +21,7 @@ local targetFov = 70
 local fovSpeed = 12
 
 local shakeMagnitude = 0 -- intensité du screenshake (décroît)
+local fovBoost = 0 -- réglage joueur (FOV), ajouté au FOV calculé
 
 local function onRender(dt: number)
 	camera = Workspace.CurrentCamera
@@ -45,7 +46,12 @@ local function onRender(dt: number)
 
 	-- Champ de vision (lissé)
 	currentFov = currentFov + (targetFov - currentFov) * math.clamp(fovSpeed * dt, 0, 1)
-	camera.FieldOfView = currentFov
+	camera.FieldOfView = currentFov + fovBoost
+end
+
+-- Réglage joueur : élargit/réduit le champ de vision (Paramètres)
+function CameraController.setFovBoost(value: number)
+	fovBoost = value
 end
 
 -- Ajoute un coup de recul (degrés)

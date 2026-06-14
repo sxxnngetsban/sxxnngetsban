@@ -20,6 +20,11 @@ local DEFINITIONS = {
 	ScoreUpdate = "RemoteEvent", -- serveur -> tous : scores / état de manche
 	PlayerLoadout = "RemoteEvent", -- serveur -> client : loadout au spawn
 	ProgressionUpdate = "RemoteEvent", -- serveur -> client : XP / niveau / monnaie gagnés
+	DataSync = "RemoteEvent", -- serveur -> client : profil complet (coins, unlocks, stats, settings, loadout)
+	SetLoadout = "RemoteEvent", -- client -> serveur : choix d'armes
+	BuyItem = "RemoteEvent", -- client -> serveur : achat avec monnaie in-game
+	SaveSettings = "RemoteEvent", -- client -> serveur : sauvegarde des réglages
+	Notify = "RemoteEvent", -- serveur -> client : message court (toast)
 }
 
 -- Serveur uniquement : crée le dossier et tous les remotes

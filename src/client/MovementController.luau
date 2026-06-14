@@ -103,6 +103,16 @@ local function updateSprint()
 	hum.WalkSpeed = sprinting and SPRINT_SPEED or WALK_SPEED
 end
 
+-- API publique pour les contrôles mobiles
+function MovementController.setSprint(value: boolean)
+	sprinting = value
+	updateSprint()
+end
+
+function MovementController.slide()
+	startSlide()
+end
+
 function MovementController.start()
 	UserInputService.InputBegan:Connect(function(input, gp)
 		if gp then

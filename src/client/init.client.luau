@@ -15,6 +15,9 @@ local Hud = require(script.Hud)
 local WeaponController = require(script.WeaponController)
 local MovementController = require(script.MovementController)
 local ViewModelController = require(script.ViewModelController)
+local SettingsController = require(script.SettingsController)
+local MobileController = require(script.MobileController)
+local MenuController = require(script.MenuController)
 
 local player = Players.LocalPlayer
 
@@ -22,11 +25,14 @@ local player = Players.LocalPlayer
 player.CameraMode = Enum.CameraMode.LockFirstPerson
 
 -- Démarrage des contrôleurs
+SettingsController.start() -- avant les armes (groupe de son)
 CameraController.start()
 ViewModelController.start()
 Hud.start()
 WeaponController.start()
 MovementController.start()
+MobileController.start()
+MenuController.start()
 
 -- Suivi de la vie du joueur -> HUD
 local function bindHealth(character)

@@ -1,5 +1,5 @@
 {
-	"name": "FPSGame",
+	"name": "CoinCollector",
 	"tree": {
 		"$className": "DataModel",
 
@@ -12,7 +12,7 @@
 
 		"ServerScriptService": {
 			"$className": "ServerScriptService",
-			"FPSServer": {
+			"Server": {
 				"$path": "src/server"
 			}
 		},
@@ -21,7 +21,7 @@
 			"$className": "StarterPlayer",
 			"StarterPlayerScripts": {
 				"$className": "StarterPlayerScripts",
-				"FPSClient": {
+				"Client": {
 					"$path": "src/client"
 				}
 			}

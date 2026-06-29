@@ -1,63 +1,54 @@
---!nonstrict
--- FPSClient (bootstrap)
--- Point d'entrée client : démarre la caméra, le HUD, les armes et branche
--- les retours serveur (vie, scores, killfeed).
+-- Script du CLIENT (LocalScript).
+-- Comme ce fichier s'appelle "init.client.luau", c'est le dossier "Client" lui-même
+-- qui devient un LocalScript et s'exécute sur la machine DE CHAQUE joueur.
+--
+-- Il vit dans StarterPlayer.StarterPlayerScripts : ce dossier est copié dans chaque
+-- joueur qui se connecte, et ses scripts tournent côté client (parfait pour l'UI).
+--
+-- Son rôle : construire l'affichage du compteur, et le mettre à jour quand le
+-- serveur envoie une nouvelle valeur.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Shared = ReplicatedStorage:WaitForChild("Shared")
-local GameConfig = require(Shared.GameConfig)
-local Net = require(Shared.Net)
-
-local CameraController = require(script.CameraController)
-local Hud = require(script.Hud)
-local WeaponController = require(script.WeaponController)
-local MovementController = require(script.MovementController)
-local ViewModelController = require(script.ViewModelController)
-local SettingsController = require(script.SettingsController)
-local MobileController = require(script.MobileController)
-local MenuController = require(script.MenuController)
-
 local player = Players.LocalPlayer
 
--- Vue à la première personne verrouillée (souris au centre)
-player.CameraMode = Enum.CameraMode.LockFirstPerson
+-- On attend le RemoteEvent créé par le serveur. WaitForChild = "patiente jusqu'à
+-- ce qu'il existe", car le client peut démarrer avant que le serveur l'ait créé.
+local remote = ReplicatedStorage:WaitForChild("CoinsUpdated")
 
--- Démarrage des contrôleurs
-SettingsController.start() -- avant les armes (groupe de son)
-CameraController.start()
-ViewModelController.start()
-Hud.start()
-WeaponController.start()
-MovementController.start()
-MobileController.start()
-MenuController.start()
+-- --- Construction de l'interface (UI) entièrement par code ---
 
--- Suivi de la vie du joueur -> HUD
-local function bindHealth(character)
-	local humanoid = character:WaitForChild("Humanoid")
-	Hud.setHealth(humanoid.Health, humanoid.MaxHealth)
-	humanoid.HealthChanged:Connect(function(health)
-		Hud.setHealth(health, humanoid.MaxHealth)
-	end)
-	humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(function()
-		Hud.setHealth(humanoid.Health, humanoid.MaxHealth)
-	end)
-end
+-- ScreenGui = le calque d'interface 2D plaqué sur l'écran du joueur.
+local gui = Instance.new("ScreenGui")
+gui.Name = "CoinUI"
+gui.ResetOnSpawn = false -- ne pas détruire/recréer l'UI à chaque réapparition
+gui.Parent = player:WaitForChild("PlayerGui")
 
-player.CharacterAdded:Connect(bindHealth)
-if player.Character then
-	bindHealth(player.Character)
-end
+-- Le texte qui affiche le total de pièces.
+local label = Instance.new("TextLabel")
+label.Name = "CoinLabel"
+label.Size = UDim2.fromOffset(220, 50)
+label.Position = UDim2.fromOffset(20, 20)
+label.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+label.BackgroundTransparency = 0.4
+label.TextColor3 = Color3.fromRGB(255, 215, 0)
+label.Font = Enum.Font.GothamBold
+label.TextScaled = true
+label.Text = "Pièces : 0"
+label.Parent = gui
 
--- Retours serveur globaux
-Net.get("ScoreUpdate").OnClientEvent:Connect(function(payload)
-	Hud.updateScores(payload)
+-- Petit coin arrondi, juste pour faire joli.
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = label
+
+-- --- Mise à jour quand le serveur envoie le nouveau total ---
+-- OnClientEvent = "le serveur m'a envoyé quelque chose". Ici, le total à afficher.
+remote.OnClientEvent:Connect(function(total)
+	label.Text = "Pièces : " .. total
 end)
 
-Net.get("Killfeed").OnClientEvent:Connect(function(entry)
-	Hud.addKillfeed(entry)
-end)
-
-print("[FPS] Client initialisé — mode:", GameConfig.Mode)
+-- On signale au serveur "je suis prêt, envoie-moi mon total". Utile au tout début
+-- pour afficher la valeur sauvegardée dès l'arrivée (et pas un 0 trompeur).
+remote:FireServer()

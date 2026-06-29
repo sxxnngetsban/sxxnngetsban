@@ -1,143 +1,95 @@
---!nonstrict
--- DataService
--- Sauvegarde persistante des joueurs via DataStoreService.
--- Stocke : XP, monnaie, déblocages, stats, gamepasses connus.
+-- DataService : s'occupe UNIQUEMENT de sauvegarder / charger les pièces des joueurs.
 --
--- ⚠️ IMPORTANT : pour que la sauvegarde fonctionne, active dans Studio :
---    Fichier → Paramètres du jeu → Sécurité → « Activer l'accès de Studio aux services API ».
---    En test Studio sans ça (ou hors d'un jeu publié), les données ne se sauvegardent pas
---    réellement — c'est normal, ça marchera une fois le jeu publié.
+-- Il vit côté serveur (ServerScriptService) car les DataStore ne sont accessibles
+-- QUE depuis le serveur. Si le client pouvait écrire dans le DataStore, n'importe
+-- quel joueur pourrait se donner 1 million de pièces : ce serait trichable.
 
-local Players = game:GetService("Players")
 local DataStoreService = game:GetService("DataStoreService")
-local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Settings = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Settings"))
+
+-- GetDataStore renvoie toujours le même "magasin" pour un nom donné, dans toutes
+-- les sessions du jeu. C'est lui qui garde les données entre deux visites.
+local store = DataStoreService:GetDataStore(Settings.DataStoreName)
 
 local DataService = {}
 
-local STORE_NAME = "PlayerData_v1" -- ⚠️ change le suffixe (_v2...) si tu modifies la structure
-local store = DataStoreService:GetDataStore(STORE_NAME)
+-- Cache en mémoire : pendant qu'un joueur joue, on garde son total ici.
+-- C'est instantané (pas d'appel réseau à chaque pièce). On n'écrit dans le
+-- DataStore que lorsqu'il part : c'est plus rapide et ça économise le quota.
+local coinsByUserId = {}
 
-local sessions = {} -- player -> data (cache en mémoire pendant la session)
-
--- Données par défaut d'un nouveau joueur
-local function defaultData()
-	return {
-		xp = 0,
-		coins = 500,
-		unlocks = {}, -- { weaponId = true }
-		stats = { kills = 0, deaths = 0, wins = 0, losses = 0, bestStreak = 0, playtime = 0 },
-		loadout = nil, -- défini par WeaponConfig.DefaultLoadout si nil
-		settings = {}, -- sensibilité, FOV, etc. (Phase 2)
-		lastLogin = 0,
-		loginStreak = 0,
-	}
+-- Construit la "clé" unique d'un joueur. On se base sur son UserId (un nombre qui
+-- ne change JAMAIS), pas sur son pseudo (qui, lui, peut changer).
+local function keyFor(player)
+	return "Player_" .. player.UserId
 end
 
--- Lecture avec retries (anti-erreur réseau DataStore)
-local function loadAsync(key: string)
-	local attempts = 0
-	while attempts < 4 do
-		attempts += 1
-		local ok, result = pcall(function()
-			return store:GetAsync(key)
-		end)
-		if ok then
-			return result
-		end
-		warn("[DataService] Échec lecture (essai " .. attempts .. ") : " .. tostring(result))
-		task.wait(2 ^ attempts) -- backoff : 2s, 4s, 8s...
-	end
-	return nil
-end
+-- Charge le total d'un joueur depuis le DataStore (appelé quand il rejoint).
+function DataService.Load(player)
+	local userId = player.UserId
 
--- Écriture avec retries (UpdateAsync = plus sûr contre les écrasements)
-local function saveAsync(key: string, data)
-	local attempts = 0
-	while attempts < 4 do
-		attempts += 1
-		local ok, err = pcall(function()
-			store:UpdateAsync(key, function()
-				return data
-			end)
-		end)
-		if ok then
-			return true
-		end
-		warn("[DataService] Échec sauvegarde (essai " .. attempts .. ") : " .. tostring(err))
-		task.wait(2 ^ attempts)
-	end
-	return false
-end
+	-- pcall = "protected call". Si le DataStore est indisponible (coupure réseau,
+	-- quota dépassé...), le jeu ne plante pas : on récupère l'erreur dans "result".
+	local ok, result = pcall(function()
+		return store:GetAsync(keyFor(player))
+	end)
 
-local function keyFor(player: Player): string
-	return "player_" .. player.UserId
-end
-
--- Charge (ou crée) les données d'un joueur. Renvoie la table de données.
-function DataService.load(player: Player)
-	local saved
-	if RunService:IsStudio() then
-		-- En Studio : une seule tentative (pas de 30s d'attente si l'API est désactivée)
-		local ok, res = pcall(function()
-			return store:GetAsync(keyFor(player))
-		end)
-		saved = ok and res or nil
+	if ok then
+		-- result peut être nil si le joueur n'a JAMAIS joué : dans ce cas, 0.
+		coinsByUserId[userId] = result or 0
 	else
-		saved = loadAsync(keyFor(player))
+		-- Lecture échouée : on affiche 0 en mémoire, mais on fera attention à NE PAS
+		-- écraser les vraies données plus tard (voir le commentaire dans Save).
+		warn("[DataService] Échec du chargement pour " .. player.Name .. " : " .. tostring(result))
+		coinsByUserId[userId] = 0
 	end
-	local data = saved or defaultData()
-	-- Fusion défensive : ajoute les champs manquants si la structure a évolué
-	local defaults = defaultData()
-	for k, v in defaults do
-		if data[k] == nil then
-			data[k] = v
-		end
-	end
-	if data.stats then
-		for k, v in defaults.stats do
-			if data.stats[k] == nil then
-				data.stats[k] = v
-			end
-		end
-	end
-	sessions[player] = data
-	return data
+
+	return coinsByUserId[userId]
 end
 
--- Renvoie les données en cache (rapide, sans relire le DataStore)
-function DataService.get(player: Player)
-	return sessions[player]
+-- Renvoie le total actuel (depuis le cache mémoire).
+function DataService.Get(player)
+	return coinsByUserId[player.UserId] or 0
 end
 
--- Sauvegarde les données en cache du joueur
-function DataService.save(player: Player): boolean
-	local data = sessions[player]
-	if not data then
-		return false
+-- Ajoute des pièces au total en mémoire et renvoie le nouveau total.
+function DataService.Add(player, amount)
+	local userId = player.UserId
+	coinsByUserId[userId] = (coinsByUserId[userId] or 0) + amount
+	return coinsByUserId[userId]
+end
+
+-- Sauvegarde le total d'un joueur dans le DataStore.
+-- Appelé quand il part (PlayerRemoving) et à la fermeture du serveur (BindToClose).
+function DataService.Save(player)
+	local userId = player.UserId
+	local amount = coinsByUserId[userId]
+	if amount == nil then
+		return -- rien à sauvegarder (joueur jamais chargé)
 	end
-	if RunService:IsStudio() then
-		-- En Studio sans API services, on évite de spammer les erreurs
-		local ok = pcall(function()
-			return saveAsync(keyFor(player), data)
+
+	-- On utilise UpdateAsync plutôt que SetAsync (explication détaillée dans le chat).
+	-- En bref : UpdateAsync LIT l'ancienne valeur puis ÉCRIT, de façon atomique
+	-- (lecture + écriture indivisibles). On reçoit l'ancienne valeur "oldValue" et
+	-- on décide quoi garder, ce qui évite d'écraser bêtement des données.
+	local ok, err = pcall(function()
+		store:UpdateAsync(keyFor(player), function(oldValue)
+			-- oldValue = ce qui est DÉJÀ stocké dans le DataStore.
+			-- Dans ce petit jeu les pièces ne font qu'augmenter, donc on garde le
+			-- plus grand des deux : filet de sécurité contre une écriture en retard.
+			local previous = oldValue or 0
+			return math.max(previous, amount)
 		end)
-		return ok
+	end)
+
+	if not ok then
+		warn("[DataService] Échec de la sauvegarde pour " .. player.Name .. " : " .. tostring(err))
 	end
-	return saveAsync(keyFor(player), data)
-end
 
-function DataService.init()
-	Players.PlayerRemoving:Connect(function(player)
-		DataService.save(player)
-		sessions[player] = nil
-	end)
-
-	-- Sauvegarde tout le monde à l'arrêt du serveur (anti-perte de données)
-	game:BindToClose(function()
-		for _, player in ipairs(Players:GetPlayers()) do
-			task.spawn(DataService.save, player)
-		end
-		task.wait(3) -- laisse le temps aux écritures
-	end)
+	-- On nettoie le cache mémoire pour ce joueur.
+	coinsByUserId[userId] = nil
 end
 
 return DataService
